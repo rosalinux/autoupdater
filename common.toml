@@ -1,0 +1,55 @@
+[vim]
+source = "git"
+git = "https://github.com/vim/vim.git"
+prefix = "v"
+use_max_tag = true
+
+[nss]
+source = "repology"
+repology = "nss"
+repo = "alpine_edge"
+
+[dos2unix]
+source = "git"
+git = "https://git.code.sf.net/p/dos2unix/dos2unix"
+prefix = "dos2unix-"
+exclude_regex = ".*(unix2dos|beta).*"
+
+[qemu]
+source = "git"
+git = "https://gitlab.com/qemu-project/qemu.git"
+exclude_regex = ".*(rc|RC|alpha|beta).*"
+prefix = "v"
+
+[htop]
+source = "git"
+git = "https://github.com/htop-dev/htop.git"
+
+
+[neovim]
+source = "github"
+github = "neovim/neovim"
+prefix = "v"
+use_max_tag = true
+
+[tree-sitter]
+source = "git"
+git = "https://github.com/tree-sitter/tree-sitter.git"
+prefix = "v"
+
+[hyprland]
+source = "github"
+github = "hyprwm/Hyprland"
+prefix = "v"
+use_max_tag = true
+
+[systemd]
+source = "git"
+git = "https://github.com/systemd/systemd.git"
+prefix = "v"
+exclude_regex = ".*rc.*"
+
+[zlib]
+source = "git"
+git = "https://github.com/madler/zlib.git"
+prefix = "v"
