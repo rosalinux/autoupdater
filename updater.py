@@ -5,6 +5,8 @@ import argparse
 import tempfile
 import json
 import subprocess
+from helpers.helper import update_version_in_spec_file, run_spectool_in_directory
+
 
 def compare_versions(repo_version, upstream_version):
     """
@@ -150,10 +152,86 @@ def repo_version(spec_file):
         raise
 
 
+def handle_update(package_name, branch="rosa2023.1", base_url="https://abf.io/import"):
+    """
+    Handles the package update process:
+    1. Clones the project repository into $HOME/<package_name>.
+    2. Checks for upstream updates.
+    3. Updates the spec file with the new version.
+    4. Runs `spectool -g` to download the sources.
+
+    Args:
+        package_name (str): The name of the package to update.
+        branch (str): The branch to look for spec files and update info.
+        base_url (str): The base URL for spec and update info.
+
+    Raises:
+        Exception: If any step in the update process fails.
+    """
+    home_dir = os.path.expanduser("~")
+    project_dir = os.path.join(home_dir, package_name)
+    project_url = f"git@abf.io:import/{package_name}.git"
+
+    try:
+        # Check if the directory already exists
+        if os.path.exists(project_dir):
+            print(f"Directory already exists: {project_dir}. Pulling latest changes...")
+            subprocess.run(
+                ["git", "-C", project_dir, "pull"],
+                check=True,
+                stdout=subprocess.PIPE,
+                stderr=subprocess.PIPE,
+                text=True
+            )
+        else:
+            # Clone the repository
+            print(f"Cloning repository: {project_url} (branch: {branch})")
+            subprocess.run(
+                ["git", "clone", "-b", branch, project_url, project_dir],
+                check=True,
+                stdout=subprocess.PIPE,
+                stderr=subprocess.PIPE,
+                text=True
+            )
+            print(f"Repository cloned to {project_dir}")
+
+        # Find the spec file
+        spec_file = os.path.join(project_dir, f"{package_name}.spec")
+        if not os.path.isfile(spec_file):
+            raise FileNotFoundError(f"Spec file not found in cloned repository: {spec_file}")
+
+        # Extract the current repo version
+        name, current_version = repo_version(spec_file)
+
+        # Check for upstream updates
+        upstream_version = check_update(package_name, branch, base_url)
+        if not upstream_version:
+            print(f"No update available for package: {package_name}")
+            return
+
+        # Compare versions
+        if compare_versions(current_version, upstream_version):
+            print(f"Updating package {package_name} to version {upstream_version}...")
+
+            # Update the version in the spec file
+            update_version_in_spec_file(spec_file, upstream_version)
+
+            # Run spectool in the project directory
+            run_spectool_in_directory(project_dir)
+
+            print(f"Package {package_name} updated successfully to version {upstream_version}.")
+        else:
+            print(f"Package {package_name} is already up-to-date.")
+
+    except Exception as e:
+        print(f"Error handling update for package '{package_name}': {e}")
+        raise
+
+
 def main():
     # Set up argument parser
-    parser = argparse.ArgumentParser(description="Script to extract package versions from spec files.")
-    parser.add_argument("--package", required=True, nargs="+", help="List of packages to extract versions for.")
+    parser = argparse.ArgumentParser(description="Script to update package spec files and sources.")
+    parser.add_argument("--package", required=True, nargs="+", help="List of packages to update.")
     parser.add_argument("--branch", default="rosa2023.1", help="Git branch to look for spec files.")
     args = parser.parse_args()
 
@@ -162,14 +240,7 @@ def main():
 
     for package_name in package_names:
         try:
-            # Download the spec file
-            spec_file = fetch_spec_file(package_name, branch)
-            # Extract Name and Version
-            name, version = repo_version(spec_file)
-            print(f"package: [{name}], version: [{version}]")
-            upstream_version = check_update(package_name)
-            if upstream_version:
-                compare_versions(version, upstream_version)
+            handle_update(package_name, branch)
         except Exception as e:
             print(f"Error processing package '{package_name}': {e}")
 
