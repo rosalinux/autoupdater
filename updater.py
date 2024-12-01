@@ -5,7 +5,7 @@ import argparse
 import tempfile
 import json
 import subprocess
-from helpers.helper import update_version_in_spec_file, run_spectool_in_directory
+from helpers.helper import update_version_in_spec_file, run_spectool_in_directory, mock_commit
 
 
 def compare_versions(repo_version, upstream_version):
@@ -218,6 +218,7 @@ def handle_update(package_name, branch="rosa2023.1", base_url="https://abf.io/im
 
             # Run spectool in the project directory
             run_spectool_in_directory(project_dir)
+            mock_commit(project_dir, upstream_version)
 
             print(f"Package {package_name} updated successfully to version {upstream_version}.")
         else:

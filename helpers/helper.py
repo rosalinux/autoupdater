@@ -3,6 +3,93 @@ import os
 import subprocess
 
 
+def mock_commit(project_dir, version):
+    """
+    Runs `abf mock -v` in the project directory, and if successful:
+    1. Deletes `abf.yml` if it exists.
+    2. Commits the changes to the git repository with a message.
+    3. Pushes the changes to the remote repository.
+    4. Runs `abf build` to trigger the build.
+
+    Args:
+        project_dir (str): Path to the project directory.
+        version (str): The new version to include in the commit message.
+
+    Raises:
+        Exception: If any step fails.
+    """
+    try:
+        # Step 1: Run `abf mock -v`
+        print(f"Running `abf mock -v` in directory: {project_dir}")
+        result = subprocess.run(
+            ["abf", "mock", "-v"],
+            cwd=project_dir,
+            stdout=subprocess.PIPE,
+            stderr=subprocess.PIPE,
+            text=True,
+            check=True
+        )
+        print(f"`abf mock -v` completed successfully.\n{result.stdout}")
+
+        # Step 2: Remove `abf.yml` if it exists
+        abf_yml_path = os.path.join(project_dir, ".abf.yml")
+        if os.path.exists(abf_yml_path):
+            print(f"Removing {abf_yml_path}")
+            os.remove(abf_yml_path)
+
+        # Step 3: upload new sources
+        print(f"Committing changes with version {version}")
+        subprocess.run(
+            ["abf", "put"],
+            cwd=project_dir,
+            check=True,
+            stdout=subprocess.PIPE,
+            stderr=subprocess.PIPE,
+            text=True
+        )
+        commit_message = f"autoupdate version to {version}"
+        subprocess.run(
+            ["git", "commit", "-am", commit_message],
+            cwd=project_dir,
+            check=True,
+            stdout=subprocess.PIPE,
+            stderr=subprocess.PIPE,
+            text=True
+        )
+        print(f"Changes committed with message: {commit_message}")
+
+        # Step 4: Git push
+        print(f"Pushing changes to remote repository")
+        subprocess.run(
+            ["git", "push"],
+            cwd=project_dir,
+            check=True,
+            stdout=subprocess.PIPE,
+            stderr=subprocess.PIPE,
+            text=True
+        )
+
+        # Step 5: Run `abf build`
+        print(f"Running `abf build` in directory: {project_dir}")
+        result = subprocess.run(
+            ["abf", "build"],
+            cwd=project_dir,
+            stdout=subprocess.PIPE,
+            stderr=subprocess.PIPE,
+            text=True,
+            check=True
+        )
+        print(f"`abf build` completed successfully.\n{result.stdout}")
+
+    except subprocess.CalledProcessError as e:
+        print(f"Error during ABF process: {e.stderr}")
+        raise
+    except Exception as e:
+        print(f"An error occurred: {e}")
+        raise
+
+
+
 def update_version_in_spec_file(spec_file_path, new_version):
     """
     Updates the version in the spec file to the specified new version.
