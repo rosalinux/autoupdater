@@ -93,7 +93,7 @@ def check_update(package_name, branch="rosa2023.1", base_url="https://abf.io/imp
             try:
                 log_entry = json.loads(line)
                 # Check if the log entry corresponds to the specified package and has a "version" key
-                if log_entry.get("name") == package_name and "version" in log_entry:
+                if log_entry.get("name") == package_name.lower() and "version" in log_entry:
                     print(f"Found [{package_name}] upstream version: [{log_entry['version']}]")
                     return log_entry["version"]
             except json.JSONDecodeError:
