@@ -29,6 +29,11 @@ Check single package
    ```
    python updater.py --package libexif
    ```
+Check packages from file and save output to log
+   ```
+   python updater.py --file main_repo.txt --log main_repo.log
+   ```
+  
 
 ## .nvchecker.toml examples
 
