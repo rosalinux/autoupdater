@@ -8,6 +8,21 @@ import subprocess
 from helpers.helper import update_version_in_spec_file, run_spectool_in_directory, mock_commit
 
 
+def log_message(log_file, message):
+    """
+    Logs a message to the specified file, if provided.
+
+    Args:
+        log_file (str): Path to the log file.
+        message (str): The message to log.
+
+    If log_file is None, this function does nothing.
+    """
+    if log_file:
+        with open(log_file, "a") as file:
+            file.write(message + "\n")
+
+
 def compare_versions(repo_version, upstream_version):
     """
     Compares two versions using rpmdev-vercmp and prints whether an update is needed.
@@ -152,7 +167,7 @@ def repo_version(spec_file):
         raise
 
 
-def handle_update(package_name, branch="rosa2023.1", base_url="https://abf.io/import"):
+def handle_update(package_name, branch="rosa2023.1", base_url="https://abf.io/import", log_file=None):
     """
     Handles the package update process:
     1. Clones the project repository into $HOME/<package_name>.
@@ -206,7 +221,7 @@ def handle_update(package_name, branch="rosa2023.1", base_url="https://abf.io/im
         # Check for upstream updates
         upstream_version = check_update(package_name, branch, base_url)
         if not upstream_version:
-            print(f"No update available for package: {package_name}")
+            log_message(log_file, f"{package_name} no update available from [{current_version}]")
             return
 
         # Compare versions
@@ -218,32 +233,51 @@ def handle_update(package_name, branch="rosa2023.1", base_url="https://abf.io/im
 
             # Run spectool in the project directory
             run_spectool_in_directory(project_dir)
+
+            # Commit changes
             mock_commit(project_dir, upstream_version)
 
-            print(f"Package {package_name} updated successfully to version {upstream_version}.")
+            # Log success if log_file is provided
+            log_message(log_file, f"{package_name} upgraded [{current_version}] to [{upstream_version}]")
         else:
-            print(f"Package {package_name} is already up-to-date.")
-
+            log_message(log_file, f"{package_name} is already up-to-date.")
     except Exception as e:
+        # Log failure if log_file is provided
+        if log_file:
+            log_message(log_file, f"{package_name} failed to update from [{current_version}] to [{upstream_version}]: {e}")
         print(f"Error handling update for package '{package_name}': {e}")
-        raise
+
+def handle_file(file_path, branch="rosa2023.1", base_url="https://abf.io/import", log_file=None):
+    """
+    Reads package names from a file and handles updates for each package.
+    """
+    try:
+        with open(file_path, "r") as file:
+            package_names = [line.strip() for line in file if line.strip()]
+        for package_name in package_names:
+            handle_update(package_name, branch, base_url, log_file)
+    except Exception as e:
+        print(f"Error reading file {file_path}: {e}")
 
 
 def main():
-    # Set up argument parser
     parser = argparse.ArgumentParser(description="Script to update package spec files and sources.")
-    parser.add_argument("--package", required=True, nargs="+", help="List of packages to update.")
+    parser.add_argument("--package", nargs="+", help="List of packages to update.")
+    parser.add_argument("--file", help="File with a list of package names to update.")
     parser.add_argument("--branch", default="rosa2023.1", help="Git branch to look for spec files.")
+    parser.add_argument("--log", help="Path to a log file.")
+
     args = parser.parse_args()
-
-    package_names = args.package
     branch = args.branch
+    log_file = args.log
 
-    for package_name in package_names:
-        try:
-            handle_update(package_name, branch)
-        except Exception as e:
-            print(f"Error processing package '{package_name}': {e}")
+    if args.package:
+        for package_name in args.package:
+            handle_update(package_name, branch, log_file=log_file)
+    elif args.file:
+        handle_file(args.file, branch, log_file=log_file)
+    else:
+        print("Error: You must specify either --package or --file.")
 
 if __name__ == "__main__":
     main()
