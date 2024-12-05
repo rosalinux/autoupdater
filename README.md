@@ -32,7 +32,13 @@ Check single package
 
 ## .nvchecker.toml examples
 
-```
+# README.md
+
+This file provides examples of `.nvchecker.toml` configurations.
+
+## Examples
+
+```toml
 [neovim]
 source = "github"
 github = "neovim/neovim"
@@ -72,4 +78,4 @@ url = "https://thrysoee.dk/editline/"
 regex = "libedit-([0-9\\.\\-]+).tar.gz"
 from_pattern = "\\-"
 to_pattern = "_"
-```
+
