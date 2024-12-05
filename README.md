@@ -15,7 +15,7 @@ A script to automate the process of updating RPM package spec files and their so
 - git for repository management
 
 ## Installation
-1. Clone the repository:
+Clone the repository:
    ```
    sudo dnf in -y git nvchecker rpmdevtools abf-c-c
    git clone https://github.com/rosalinux/autoupdater.git
@@ -25,7 +25,51 @@ A script to automate the process of updating RPM package spec files and their so
 
 ## Usage
 
-2. Check single package
+Check single package
     ```
    python updater.py --package libexif
    ```
+
+## .nvchecker.toml examples
+
+```
+[neovim]
+source = "github"
+github = "neovim/neovim"
+prefix = "v"
+use_max_tag = true
+
+[tree-sitter]
+source = "git"
+git = "https://github.com/tree-sitter/tree-sitter.git"
+prefix = "v"
+
+[hyprland]
+source = "github"
+github = "hyprwm/Hyprland"
+prefix = "v"
+use_max_tag = true
+
+[systemd]
+source = "git"
+git = "https://github.com/systemd/systemd.git"
+prefix = "v"
+exclude_regex = ".*rc.*"
+
+[zlib]
+source = "git"
+git = "https://github.com/madler/zlib.git"
+prefix = "v"
+
+[folder-color-switcher]
+source = "regex"
+url = "http://packages.linuxmint.com/pool/main/f/folder-color-switcher/"
+regex = "([0-9\\.\\-]+).tar.*"
+
+[libedit]
+source = "regex"
+url = "https://thrysoee.dk/editline/"
+regex = "libedit-([0-9\\.\\-]+).tar.gz"
+from_pattern = "\\-"
+to_pattern = "_"
+```
