@@ -32,12 +32,6 @@ Check single package
 
 ## .nvchecker.toml examples
 
-# README.md
-
-This file provides examples of `.nvchecker.toml` configurations.
-
-## Examples
-
 ```toml
 [neovim]
 source = "github"
