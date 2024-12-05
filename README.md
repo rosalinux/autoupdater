@@ -26,7 +26,7 @@ Clone the repository:
 ## Usage
 
 Check single package
-   ```bash
+   ```
    python updater.py --package libexif
    ```
 
