@@ -87,7 +87,6 @@ def check_update(package_name, branch="rosa2023.1", base_url="https://abf.io/imp
             text=True,
             check=True
         )
-        print(result)
 
         # Parse the JSON lines in the output
         for line in result.stdout.splitlines():

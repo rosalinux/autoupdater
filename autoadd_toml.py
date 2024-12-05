@@ -3,6 +3,18 @@ import requests
 import subprocess
 import os
 import shutil
+import logging
+
+def setup_logging(log_file):
+    """Настраивает логгирование в файл."""
+    logging.basicConfig(
+        level=logging.INFO,
+        format="%(asctime)s - %(levelname)s - %(message)s",
+        handlers=[
+            logging.FileHandler(log_file, mode='w'),
+            logging.StreamHandler()
+        ]
+    )
 
 def check_file_exists(url):
     """Проверяет наличие файла по указанному URL."""
@@ -10,7 +22,7 @@ def check_file_exists(url):
         response = requests.head(url, timeout=10)
         return response.status_code == 200
     except requests.RequestException as e:
-        print(f"Ошибка при доступе к {url}: {e}")
+        logging.error(f"Ошибка при доступе к {url}: {e}")
         return False
 
 def download_file(url, filename):
@@ -20,10 +32,10 @@ def download_file(url, filename):
         response.raise_for_status()
         with open(filename, "wb") as file:
             file.write(response.content)
-        print(f"Файл скачан и сохранен как {filename}")
+        logging.info(f"Файл скачан и сохранен как {filename}")
         return True
     except requests.RequestException as e:
-        print(f"Ошибка при скачивании {url}: {e}")
+        logging.error(f"Ошибка при скачивании {url}: {e}")
         return False
 
 def run_nvchecker(config_file):
@@ -32,7 +44,7 @@ def run_nvchecker(config_file):
         result = subprocess.run(["nvchecker", "-c", config_file], check=True)
         return result.returncode == 0
     except subprocess.CalledProcessError as e:
-        print(f"Ошибка при выполнении nvchecker: {e}")
+        logging.error(f"Ошибка при выполнении nvchecker: {e}")
         return False
 
 def git_operations(repo_url, branch, file_to_add, commit_message, home_dir):
@@ -41,76 +53,82 @@ def git_operations(repo_url, branch, file_to_add, commit_message, home_dir):
     repo_path = os.path.join(home_dir, repo_name)
 
     try:
-        # Удаление каталога, если он существует
         if os.path.exists(repo_path):
-            print(f"Каталог {repo_path} существует. Удаляем...")
+            logging.info(f"Каталог {repo_path} существует. Удаляем...")
             shutil.rmtree(repo_path)
 
-        # Клонирование репозитория
         subprocess.run(["git", "clone", "-b", branch, repo_url, repo_path], check=True)
-        print(f"Клонирован репозиторий {repo_name} в {repo_path}.")
+        logging.info(f"Клонирован репозиторий {repo_name} в {repo_path}.")
 
-        # Перемещение файла .nvchecker.toml в каталог репозитория
         project_nvchecker_path = os.path.join(repo_path, file_to_add)
         shutil.move(file_to_add, project_nvchecker_path)
-        print(f"Файл {file_to_add} перемещен в {project_nvchecker_path}.")
+        logging.info(f"Файл {file_to_add} перемещен в {project_nvchecker_path}.")
 
-        # Выполнение Git-операций
         os.chdir(repo_path)
         subprocess.run(["git", "add", file_to_add], check=True)
-        print(f"Файл {file_to_add} добавлен в индекс.")
+        logging.info(f"Файл {file_to_add} добавлен в индекс.")
         subprocess.run(["git", "commit", "-am", commit_message], check=True)
-        print(f"Коммит с сообщением '{commit_message}' создан.")
+        logging.info(f"Коммит с сообщением '{commit_message}' создан.")
         subprocess.run(["git", "push"], check=True)
-        print("Изменения отправлены в удаленный репозиторий.")
+        logging.info("Изменения отправлены в удаленный репозиторий.")
     except subprocess.CalledProcessError as e:
-        print(f"Ошибка при выполнении Git-операции: {e}")
+        logging.error(f"Ошибка при выполнении Git-операции: {e}")
     finally:
         os.chdir(home_dir)
 
-def main():
-    parser = argparse.ArgumentParser(description="Автоматический скрипт для проверки и скачивания .nvchecker.toml.")
-    parser.add_argument("--package", required=True, help="Имя пакета для проверки.")
-    args = parser.parse_args()
-
-    package_name = args.package
-    home_dir = os.path.expanduser("~")
-
-    # URL-адреса
+def process_package(package_name, home_dir):
+    """Обрабатывает один пакет."""
     rosa_url = f"https://abf.io/import/{package_name}/raw/rosa2023.1/.nvchecker.toml"
     arch_url = f"https://gitlab.archlinux.org/archlinux/packaging/packages/{package_name}/-/raw/main/.nvchecker.toml"
 
-    # Проверяем наличие файла на ROSA
     if check_file_exists(rosa_url):
-        print("Файл .nvchecker.toml уже существует в ROSA. Действие не требуется.")
+        logging.info(f"Файл .nvchecker.toml уже существует для {package_name}.")
         return
 
-    print("Файл .nvchecker.toml отсутствует в ROSA. Проверяем в Arch Linux...")
+    logging.info(f"Файл .nvchecker.toml отсутствует для {package_name}. Проверяем в Arch Linux...")
 
-    # Проверяем наличие файла в Arch Linux
     if not check_file_exists(arch_url):
-        print("Файл .nvchecker.toml отсутствует в Arch Linux. Завершаем работу.")
+        logging.warning(f"Файл .nvchecker.toml отсутствует для {package_name} в Arch Linux.")
         return
 
-    print("Файл .nvchecker.toml найден в Arch Linux. Скачиваем...")
-
-    # Скачиваем файл из Arch Linux
     local_file = ".nvchecker.toml"
     if not download_file(arch_url, local_file):
-        print("Не удалось скачать файл. Завершаем работу.")
+        logging.error(f"Не удалось скачать файл для {package_name}.")
         return
 
-    print("Запускаем nvchecker...")
-
-    # Запускаем nvchecker
     if run_nvchecker(local_file):
-        print("nvchecker выполнен успешно. Выполняем Git-операции...")
         repo_url = f"git@abf.io:import/{package_name}.git"
         branch = "rosa2023.1"
-        git_operations(repo_url, branch, local_file, "autoadd .nvchecker.toml", home_dir)
+        git_operations(repo_url, branch, local_file, f"autoadd .nvchecker.toml for {package_name}", home_dir)
     else:
-        print("Ошибка при выполнении nvchecker. Завершаем работу.")
+        logging.error(f"Ошибка при выполнении nvchecker для {package_name}.")
+
+def main():
+    parser = argparse.ArgumentParser(description="Автоматический скрипт для проверки и скачивания .nvchecker.toml.")
+    group = parser.add_mutually_exclusive_group(required=True)
+    group.add_argument("--package", help="Имя пакета для обработки.")
+    group.add_argument("--file", help="Файл со списком пакетов.")
+    parser.add_argument("--log", required=True, help="Файл для сохранения лога.")
+    args = parser.parse_args()
+
+    setup_logging(args.log)
+
+    home_dir = os.path.expanduser("~")
+
+    if args.package:
+        logging.info(f"Обработка пакета: {args.package}")
+        process_package(args.package, home_dir)
+    elif args.file:
+        try:
+            with open(args.file, "r") as f:
+                packages = [line.strip() for line in f if line.strip()]
+        except FileNotFoundError:
+            logging.error(f"Файл {args.file} не найден.")
+            return
+
+        for package_name in packages:
+            logging.info(f"Обработка пакета: {package_name}")
+            process_package(package_name, home_dir)
 
 if __name__ == "__main__":
     main()
-
